@@ -203,8 +203,12 @@ def loss(logits, scores):
     """
     # Calculate the average cross entropy loss across the batch.
     n_scores = tf.cast(scores, tf.float32)
-    cross_entropy = tf.nn.l2_loss(n_scores - logits, name='cross_entropy_per_example')
+    score_diff = tf.subtract(n_scores, tf.reshape(logits, [-1]))
+    print(score_diff)
+    cross_entropy = tf.nn.l2_loss(score_diff, name='cross_entropy_per_example')
+    print(cross_entropy)
     cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+    print(cross_entropy_mean)
     tf.add_to_collection('losses', cross_entropy_mean)
 
     # The total loss is defined as the cross entropy loss plus all of the weight
