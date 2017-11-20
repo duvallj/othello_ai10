@@ -5,6 +5,7 @@ import tensorflow as tf
 import argparse
 import os
 import sys
+import re
 
 import ai10_input
 
@@ -27,6 +28,8 @@ NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
 INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
 
+TOWER_NAME = 'tower'
+
 def _activation_summary(x):
     """Helper to create summaries for activations.
 
@@ -38,7 +41,7 @@ def _activation_summary(x):
     Returns:
     nothing
     """
-    tensor_name = x.op.name
+    tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
     tf.summary.histogram(tensor_name + '/activations', x)
     tf.summary.scalar(tensor_name + '/sparsity',
                                          tf.nn.zero_fraction(x))
