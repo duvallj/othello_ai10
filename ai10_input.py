@@ -23,7 +23,8 @@ def read_logs(filename_queue):
             depth: number of channels in the result (1)
             key: a scalar string Tensor describing the filename & record number
                 for this example
-            score: an int32 Tensor with final score of the board in the range -64..64.
+            score: an float32 Tensor with final score of the board in the range
+                -64..64 normalized to 0..1.
             int8boards: a tuple of 8 [height, width, depth] int8 Tensors with the
                 board data. There are 8 for rotation invariance.
         Each object is a rotation or flipped version of the original board
@@ -44,6 +45,13 @@ def read_logs(filename_queue):
 
     result.score = tf.cast(
         tf.strided_slice(record_bytes, [0], [score_bytes]), tf.int8)
+    result.score = tf.add(
+        tf.divide(
+            tf.to_float(result.score),
+            128
+        ),
+        0.5
+    )
 
     depth_major = tf.reshape(
         tf.strided_slice(record_bytes, [score_bytes],
@@ -136,7 +144,7 @@ def inputs(eval_data, data_dir, batch_size):
     read_input = read_logs(filename_queue)
     float_boards = tuple(
         (tf.cast(board, tf.float32), 
-        tf.cast(score, tf.int32))
+        score)
     for board, score in read_input.int8boards)
     
     for board, score in float_boards:

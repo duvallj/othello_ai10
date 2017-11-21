@@ -154,14 +154,14 @@ def inference(boards):
         concat = tf.concat([reshape_a, reshape_b], 1)
         dim = concat.get_shape()[1].value
         weights = _variable_with_weight_decay('weights', shape=[dim, 200],
-                                                stddev=0.04, wd=0.004)
+                                                stddev=0.04, wd=None)
         biases = _variable_on_cpu('biases', [200], tf.constant_initializer(0.1))
         relu3 = tf.nn.relu(tf.matmul(concat, weights) + biases, name=scope.name)
         _activation_summary(relu3)
 
     with tf.variable_scope('relu4') as scope:
         weights = _variable_with_weight_decay('weights', shape=[200, 100],
-                                                stddev=0.04, wd=0.004)
+                                                stddev=0.04, wd=None)
         biases = _variable_on_cpu('biases', [100], tf.constant_initializer(0.1))
         relu4 = tf.nn.relu(tf.matmul(relu3, weights) + biases, name=scope.name)
         _activation_summary(relu4)
@@ -172,18 +172,21 @@ def inference(boards):
         biases = _variable_on_cpu('biases', [1],
                                     tf.constant_initializer(0.0))
 
-        logi5 = tf.multiply(
-            tf.subtract(
-                tf.nn.sigmoid(
-                    tf.divide(
-                        tf.matmul(relu4, weights) + biases,
-                        32
-                    )
-                ),
-                0.5
-            ),
-            128, name=scope.name
-        )
+        # logi5 = tf.multiply(
+        #    tf.subtract(
+        #        tf.nn.sigmoid(
+        #            tf.divide(
+        #                tf.matmul(relu4, weights) + biases,
+        #                32
+        #            )
+        #        ),
+        #        0.5
+        #    ),
+        #    128, name=scope.name
+        #)
+        # ^^^ is what you do to get actual score
+        # this code used signmoid_cross_entropy_with_logits for better results
+        logi5 = tf.matmul(relu4, weights) + biases
         
         _activation_summary(logi5)
 
@@ -202,10 +205,11 @@ def loss(logits, scores):
     Loss tensor of type float.
     """
     # Calculate the average cross entropy loss across the batch.
-    n_scores = tf.cast(scores, tf.float32)
-    score_diff = tf.subtract(n_scores, tf.reshape(logits, [-1]))
-    print(score_diff)
-    cross_entropy = tf.nn.l2_loss(score_diff, name='cross_entropy_per_example')
+    cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
+        labels=scores,
+        logits=tf.reshape(logits, [-1]),
+        name='cross_entropy_per_example'
+    )
     print(cross_entropy)
     cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
     print(cross_entropy_mean)
