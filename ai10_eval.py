@@ -15,7 +15,7 @@ parser.add_argument('--eval_dir', type=str, default='./ai10_eval',
 parser.add_argument('--eval_data', type=str, default='test',
                     help='Either `test` or `train_eval`.')
 
-parser.add_argument('--checkpoint_dir', type=str, default='./ai10_train_bk',
+parser.add_argument('--checkpoint_dir', type=str, default='./ai10_train',
                     help='Directory where to read model checkpoints.')
 
 parser.add_argument('--eval_interval_secs', type=int, default=60*5,
@@ -58,21 +58,21 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
                                                                                  start=True))
 
             num_iter = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
-            true_count = 0  # Counts the number of correct predictions.
+            total_off = 0  # Counts the number of correct predictions.
             total_sample_count = num_iter * FLAGS.batch_size
             step = 0
             while step < num_iter and not coord.should_stop():
                 predictions = sess.run([top_k_op])
-                true_count += np.sum(predictions)
+                total_off += np.sum(predictions)
                 step += 1
 
-            # Compute precision @ 1.
-            precision = true_count / total_sample_count
-            print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
+            # Compute average error
+            precision = total_off / total_sample_count
+            print('%s: precision = %.3f' % (datetime.now(), precision))
 
             summary = tf.Summary()
             summary.ParseFromString(sess.run(summary_op))
-            summary.value.add(tag='Precision @ 1', simple_value=precision)
+            summary.value.add(tag='Average Error', simple_value=precision)
             summary_writer.add_summary(summary, global_step)
         except Exception as e:  # pylint: disable=broad-except
             coord.request_stop(e)
@@ -82,3 +82,35 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
 
 def evaluate():
     """Evaluate AI10 for a number of steps."""
+    with tf.Graph().as_default() as g:
+        eval_data = FLAGS.eval_data == 'test'
+        boards, scores = ai10.inputs(eval_data)
+
+        logits = ai10.inference(boards)
+
+        avg_error = tf.abs(logits - tf.reshape(scores, [-1, 1]))
+
+        variable_averages = tf.train.ExponentialMovingAverage(
+            ai10.MOVING_AVERAGE_DECAY)
+        variables_to_restore = variable_averages.variables_to_restore()
+        saver = tf.train.Saver(variables_to_restore)
+
+        summary_op = tf.summary.merge_all()
+
+        summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
+
+        while True:
+            eval_once(saver, summary_writer, avg_error, summary_op)
+            if FLAGS.run_once:
+                break
+            time.sleep(FLAGS.eval_interval_secs)
+
+def main(argv=None):
+    if tf.gfile.Exists(FLAGS.eval_dir):
+        tf.gfile.DeleteRecursively(FLAGS.eval_dir)
+    tf.gfile.MakeDirs(FLAGS.eval_dir)
+    evaluate()
+
+if __name__=='__main__':
+    FLAGS = parser.parse_args()
+    tf.app.run()

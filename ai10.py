@@ -126,7 +126,7 @@ def inference(boards):
     #
     # full8x8board  
     #   |
-    # relu3 (1024)
+    # relu3 (256)
     #   |
     # relu4 (256)
     #   |
@@ -149,14 +149,14 @@ def inference(boards):
         reshape_b = tf.reshape(boards, [FLAGS.batch_size, -1])
         concat = reshape_b # tf.concat([reshape_a, reshape_b], 1)
         dim = concat.get_shape()[1].value
-        weights = _variable_with_weight_decay('weights', shape=[dim, 1024],
+        weights = _variable_with_weight_decay('weights', shape=[dim, 256],
                                                 stddev=0.04, wd=None)
-        biases = _variable_on_cpu('biases', [1024], tf.constant_initializer(0.1))
+        biases = _variable_on_cpu('biases', [256], tf.constant_initializer(0.1))
         relu3 = tf.nn.relu(tf.matmul(concat, weights) + biases, name=scope.name)
         _activation_summary(relu3)
 
     with tf.variable_scope('relu4') as scope:
-        weights = _variable_with_weight_decay('weights', shape=[1024, 256],
+        weights = _variable_with_weight_decay('weights', shape=[256, 256],
                                                 stddev=0.04, wd=None)
         biases = _variable_on_cpu('biases', [256], tf.constant_initializer(0.1))
         relu4 = tf.nn.relu(tf.matmul(relu3, weights) + biases, name=scope.name)
