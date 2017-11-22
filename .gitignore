@@ -47,10 +47,14 @@ Temporary Items
 .apdisk
 
 # Checkpoint files
-ai10_train/*
-ai10_train_bk/*
-ai10_eval/*
-__pycache__/*
+ai10_train/
+ai10_train\
+ai10_train_bk/
+ai10_train_bk\
+ai10_eval/
+ai10_eval\
+__pycache__/
+__pycache__\
 
 # Any compiled python things
 *.pyc

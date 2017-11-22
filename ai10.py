@@ -26,7 +26,7 @@ FLAGS = parser.parse_args()
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
+INITIAL_LEARNING_RATE = 0.00001       # Initial learning rate.
 
 TOWER_NAME = 'tower'
 
@@ -123,19 +123,15 @@ def inference(boards):
     """
 
     # Network layout:
-    # conv4x4
-    #    |    
-    #    |      full8x8board
-    #    |          |
-    #    +----------+  
-    #          |
-    #   +------+
+    #
+    # full8x8board  
     #   |
-    # relu3 (200)
+    # relu3 (1024)
     #   |
-    # relu4 (100)
+    # relu4 (256)
     #   |
     # logi5 (1)
+    """
     with tf.variable_scope('conv4x4') as scope:
         kernel = _variable_with_weight_decay('weights',
                                              shape=[4, 4, 1, 128],
@@ -146,29 +142,29 @@ def inference(boards):
         pre_activation = tf.nn.bias_add(conv, biases)
         conv4x4 = tf.nn.relu(pre_activation, name=scope.name)
         _activation_summary(conv4x4)
-
-
+    """
+    
     with tf.variable_scope('relu3') as scope:
-        reshape_a = tf.reshape(conv4x4, [FLAGS.batch_size, -1])
+        #reshape_a = tf.reshape(conv4x4, [FLAGS.batch_size, -1])
         reshape_b = tf.reshape(boards, [FLAGS.batch_size, -1])
-        concat = tf.concat([reshape_a, reshape_b], 1)
+        concat = reshape_b # tf.concat([reshape_a, reshape_b], 1)
         dim = concat.get_shape()[1].value
-        weights = _variable_with_weight_decay('weights', shape=[dim, 200],
+        weights = _variable_with_weight_decay('weights', shape=[dim, 1024],
                                                 stddev=0.04, wd=None)
-        biases = _variable_on_cpu('biases', [200], tf.constant_initializer(0.1))
+        biases = _variable_on_cpu('biases', [1024], tf.constant_initializer(0.1))
         relu3 = tf.nn.relu(tf.matmul(concat, weights) + biases, name=scope.name)
         _activation_summary(relu3)
 
     with tf.variable_scope('relu4') as scope:
-        weights = _variable_with_weight_decay('weights', shape=[200, 100],
+        weights = _variable_with_weight_decay('weights', shape=[1024, 256],
                                                 stddev=0.04, wd=None)
-        biases = _variable_on_cpu('biases', [100], tf.constant_initializer(0.1))
+        biases = _variable_on_cpu('biases', [256], tf.constant_initializer(0.1))
         relu4 = tf.nn.relu(tf.matmul(relu3, weights) + biases, name=scope.name)
         _activation_summary(relu4)
 
     with tf.variable_scope('logi5') as scope:
-        weights = _variable_with_weight_decay('weights', [100, 1],
-                                                stddev=1/100.0, wd=None)
+        weights = _variable_with_weight_decay('weights', [256, 1],
+                                                stddev=1/128.0, wd=None)
         biases = _variable_on_cpu('biases', [1],
                                     tf.constant_initializer(0.0))
 
@@ -205,10 +201,17 @@ def loss(logits, scores):
     Loss tensor of type float.
     """
     # Calculate the average cross entropy loss across the batch.
+    """
     cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
-        labels=scores,
-        logits=tf.reshape(logits, [-1]),
+        labels=tf.reshape(scores, [-1, 1]),
+        logits=logits,
         name='cross_entropy_per_example'
+    )
+    """
+    cross_entropy = tf.divide(
+        tf.pow(
+            tf.reshape(scores, [-1, 1]) - logits, 2
+        ), 2
     )
     print(cross_entropy)
     cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
