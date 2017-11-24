@@ -9,7 +9,7 @@ import re
 
 import ai10_input
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(add_help=False)
 
 parser.add_argument('--batch_size', type=int, default=1024,
                     help='Number of boards to process in a batch.')
@@ -124,7 +124,9 @@ def inference(boards):
 
     # Network layout:
     #
-    # full8x8board  
+    # full8x8board (64)
+    #   |
+    # relu2 (1024)
     #   |
     # relu3 (256)
     #   |
@@ -143,16 +145,23 @@ def inference(boards):
         conv4x4 = tf.nn.relu(pre_activation, name=scope.name)
         _activation_summary(conv4x4)
     """
-    
-    with tf.variable_scope('relu3') as scope:
+
+    with tf.variable_scope('relu2') as scope:
         #reshape_a = tf.reshape(conv4x4, [FLAGS.batch_size, -1])
         reshape_b = tf.reshape(boards, [FLAGS.batch_size, -1])
         concat = reshape_b # tf.concat([reshape_a, reshape_b], 1)
         dim = concat.get_shape()[1].value
-        weights = _variable_with_weight_decay('weights', shape=[dim, 256],
+        weights = _variable_with_weight_decay('weights', shape=[dim, 1024],
+                                                stddev=0.04, wd=None)
+        biases = _variable_on_cpu('biases', [1024], tf.constant_initializer(0.1))
+        relu2 = tf.nn.relu(tf.matmul(concat, weights) + biases, name=scope.name)
+        _activation_summary(relu2)
+    
+    with tf.variable_scope('relu3') as scope:
+        weights = _variable_with_weight_decay('weights', shape=[1024, 256],
                                                 stddev=0.04, wd=None)
         biases = _variable_on_cpu('biases', [256], tf.constant_initializer(0.1))
-        relu3 = tf.nn.relu(tf.matmul(concat, weights) + biases, name=scope.name)
+        relu3 = tf.nn.relu(tf.matmul(relu2, weights) + biases, name=scope.name)
         _activation_summary(relu3)
 
     with tf.variable_scope('relu4') as scope:
@@ -171,18 +180,15 @@ def inference(boards):
         # logi5 = tf.multiply(
         #    tf.subtract(
         #        tf.nn.sigmoid(
-        #            tf.divide(
-        #                tf.matmul(relu4, weights) + biases,
-        #                32
-        #            )
+        #           tf.matmul(relu4, weights) + biases,
         #        ),
         #        0.5
         #    ),
         #    128, name=scope.name
         #)
         # ^^^ is what you do to get actual score
-        # this code used signmoid_cross_entropy_with_logits for better results
-        logi5 = tf.matmul(relu4, weights) + biases
+        # this code used a standard loss function for better results
+        logi5 = tf.nn.sigmoid(tf.matmul(relu4, weights) + biases)
         
         _activation_summary(logi5)
 

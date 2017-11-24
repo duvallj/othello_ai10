@@ -1,13 +1,14 @@
 from datetime import datetime
 import math
 import time
+import argparse
 
 import numpy as np
 import tensorflow as tf
 
 import ai10
 
-parser = ai10.parser
+parser = argparse.ArgumentParser(parents=[ai10.parser])
 
 parser.add_argument('--eval_dir', type=str, default='./ai10_eval',
                     help='Directory where to write event logs.')
@@ -24,7 +25,7 @@ parser.add_argument('--eval_interval_secs', type=int, default=60*5,
 parser.add_argument('--num_examples', type=int, default=10000,
                     help='Number of examples to run.')
 
-parser.add_argument('--run_once', type=bool, default=False,
+parser.add_argument('--run_once', type=bool, default=True,
                     help='Whether to run eval only once.')
 
 def eval_once(saver, summary_writer, top_k_op, summary_op):

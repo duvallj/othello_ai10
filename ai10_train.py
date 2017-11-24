@@ -1,11 +1,12 @@
 from datetime import datetime
 import time
+import argparse
 
 import tensorflow as tf
 
 import ai10
 
-parser = ai10.parser
+parser = argparse.ArgumentParser(parents=[ai10.parser])
 
 parser.add_argument('--train_dir', type=str, default='./ai10_train',
                     help='Directory where to write event logs and checkpoint.')
@@ -61,7 +62,7 @@ def train():
                     examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
                     sec_per_batch = float(duration / FLAGS.log_frequency)
 
-                    format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
+                    format_str = ('%s: step %d, loss = %.4f (%.1f examples/sec; %.3f '
                                                 'sec/batch)')
                     print (format_str % (datetime.now(), self._step, loss_value,
                                                              examples_per_sec, sec_per_batch))
