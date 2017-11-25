@@ -1,5 +1,4 @@
 import os
-import re
 import numpy as np
 import Othello_Core as oc
 
@@ -15,22 +14,22 @@ def convert(filename, eval_data):
         new_filename = 'test_batch.oth'
         ofile = open(new_filename, 'ab')
     else:
-        new_filename = re.findall(r'\.([^\.]*)\.', filename)[0] + '.oth'
+        new_filename = filename[:filename.index('.')] + '4' + '.oth'
         ofile = open(new_filename, 'wb')
     for line in ifile:
         ldata = line.split(' ')
         board = np.array([players[ldata[0][spot]] for spot in legal], dtype=np.uint8)
-        score = np.cast[np.uint8](int(ldata[4]))
+        score = np.cast[np.uint8](int(ldata[1]))
         ofile.write(bytes([score]))
         ofile.write(bytes(board))
     ifile.close()
     ofile.close()
 
 def main1():
-    files = [file for file in os.listdir(os.getcwd()) if file.startswith('_log')]
+    files = [file for file in os.listdir(os.getcwd()) if file.endswith('log')]
     for fname in files:
         print(fname)
-        convert(fname, True)
+        convert(fname, False)
 
 if __name__=='__main__':
     main1()
