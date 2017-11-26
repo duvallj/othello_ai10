@@ -170,7 +170,7 @@ def AlphaBeta(node, height, alpha, beta, matrix, oplayer, flag):
 
 class Strategy(mc.MyCore):
     def __init__(self):
-        file = open("networkA.pkl", 'rb')
+        file = open("networkB.pkl", 'rb')
         self.tMatrix = pickle.load(file)
         self.players_d = {oc.BLACK: consts.BLACK, oc.WHITE: consts.WHITE}
         self.depthlist = (2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30)
